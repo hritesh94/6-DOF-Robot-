@@ -6,6 +6,9 @@ These are the **original design files of the TW2KA 6-axis robot arm**, made by t
 - 📺 Channel: https://youtube.com/@tw2ka644
 
 > **All credit for this design goes to TW2KA.** I've included the files here so everything needed for this build is in one place. They're not my work, and they're shared as he published them. If you use them, please credit TW2KA and support his channel.
+<img width="1178" height="671" alt="Picture2" src="https://github.com/user-attachments/assets/ab567158-314a-485e-a387-ddc534957427" />
+<img width="828" height="790" alt="Picture1" src="https://github.com/user-attachments/assets/3d66f4dd-ff08-4707-9ff2-52b5ec953eab" />
+<img width="1021" height="701" alt="Picture 3" src="https://github.com/user-attachments/assets/b3f54908-58dc-497c-a845-183a86186295" />
 
 
 
