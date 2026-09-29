@@ -1,0 +1,4 @@
+(fp_lib_table
+	(version 7)
+	(lib (name "Tmc2209_pin_socket") (type "KiCad") (uri "${KIPRJMOD}/Tmc2209_pin_socket.pretty") (options "") (descr ""))
+)

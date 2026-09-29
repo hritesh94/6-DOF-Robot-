@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TW2KA arm controller</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#eef1f4;--ink:#1c2430;--mute:#5b6675;--line:#cfd6de;--panel:#fff;--stage:#1f2632;--bad:#c2392f;--good:#2e8b57;
+--j1:#2f6fdb;--j2:#1f9d8a;--j3:#d08a1b;--j4:#b3456b;--j5:#7a55c9;--j6:#4b8f2d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.5 "IBM Plex Sans",system-ui,sans-serif;font-variant-numeric:tabular-nums}
+.bar{position:sticky;top:0;z-index:5;background:var(--ink);color:#fff;display:flex;align-items:center;gap:10px;padding:10px 14px;flex-wrap:wrap}
+.bar h1{font-size:16px;margin:0;font-weight:600;margin-right:auto}
+.bar button{font:inherit;border:0;border-radius:8px;padding:8px 14px;cursor:pointer}
+#conn{background:#fff;color:var(--ink)}
+#estop{background:var(--bad);color:#fff;font-weight:600;padding:8px 18px}
+#estop.latched{background:#fff;color:var(--bad);outline:2px solid var(--bad)}
+#status{font-size:13px;color:#b9c3d0}
+.dot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#7b8594;margin-right:6px}
+.dot.on{background:#4ade80}
+main{max-width:1200px;margin:auto;padding:12px;display:grid;gap:12px}
+@media(min-width:900px){main{grid-template-columns:1.3fr 1fr;align-items:start}#stageWrap{position:sticky;top:64px;height:calc(100vh - 88px)}#side{grid-column:2}#stageWrap{grid-row:1/span 3}}
+#stageWrap{background:var(--stage);border-radius:14px;overflow:hidden;position:relative;height:50vh;min-height:320px;touch-action:none}
+#stage{width:100%;height:100%;display:block}
+#hint{position:absolute;left:12px;bottom:10px;color:#9aa6b6;font-size:12px}
+#warn{position:absolute;top:10px;left:10px;right:10px;background:var(--bad);color:#fff;border-radius:8px;padding:8px 10px;font-size:13px;display:none}
+#legend{position:absolute;right:10px;top:10px;color:#9aa6b6;font-size:12px;text-align:right}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:14px}
+.card h2{font-size:15px;margin:0 0 10px;font-weight:600}
+.tabs{display:flex;gap:6px;margin-bottom:12px}
+.tabs button,.seg button{flex:1;padding:8px;border:1px solid var(--line);background:#f7f9fb;border-radius:8px;font:inherit;cursor:pointer}
+.tabs button[aria-pressed=true],.seg button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.row{display:grid;grid-template-columns:44px 32px 1fr 32px 70px;align-items:center;gap:6px;margin:7px 0}
+.row label{font-size:13px;font-weight:600}
+.row .nudge{height:32px;border:1px solid var(--line);background:#f7f9fb;border-radius:6px;font:inherit;cursor:pointer;padding:0}
+.row output{text-align:right;font-size:14px}
+input[type=range]{width:100%;accent-color:var(--ink)}
+input[type=number]{width:100%;padding:5px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:13px}
+.sub{font-size:13px;color:var(--mute);margin:10px 0 4px}
+.seg{display:flex;gap:6px}
+.readout{display:grid;grid-template-columns:repeat(3,1fr);gap:6px 12px;font-size:13px}
+.readout div b{color:var(--mute);font-weight:500;margin-right:4px}
+.actions{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.actions button{padding:8px 12px;border:1px solid var(--line);background:#f7f9fb;border-radius:8px;font:inherit;cursor:pointer}
+.actions button.primary{background:var(--ink);color:#fff;border-color:var(--ink)}
+.switch{display:flex;align-items:center;gap:8px;font-size:14px}
+#log{background:#161b24;color:#b9c3d0;font:12px/1.45 ui-monospace,Menlo,monospace;border-radius:8px;padding:8px;height:120px;overflow:auto;white-space:pre-wrap}
+table.dh{width:100%;border-collapse:collapse;font-size:13px}
+table.dh th{color:var(--mute);font-weight:500;text-align:left;padding:2px 4px}
+table.dh td{padding:2px}
+button:focus-visible,input:focus-visible{outline:2px solid var(--j1);outline-offset:2px}
+.note{font-size:13px;color:var(--mute);margin:8px 0 0}
+.sw{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+.sw div{border:1px solid var(--line);border-radius:8px;padding:6px;text-align:center;font-size:13px}
+.sw div b{display:block;font-weight:600}
+.sw div span{display:inline-block;width:10px;height:10px;border-radius:50%;background:#cfd6de;margin:4px 0}
+.sw div.hit span{background:var(--bad)}
+.sw button.dir{font-weight:600}
+.sw button{width:100%;margin-top:4px;padding:4px;border:1px solid var(--line);background:#f7f9fb;border-radius:6px;font:inherit;font-size:12px;cursor:pointer}
+#homeState{font-size:13px;font-weight:600}
+.en{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.en button{padding:8px 0;border:1px solid var(--line);border-radius:8px;font:inherit;font-size:13px;cursor:pointer;background:#f7f9fb;color:var(--mute)}
+.en button b{display:block}
+.en button[aria-pressed=true]{background:var(--ink);color:#fff;border-color:var(--ink)}
+.row.off{opacity:.45}
+.gcg{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:10px 0}
+.gcg label{font-size:12px;color:var(--mute);display:grid;gap:2px}
+.gcg select{padding:5px;border:1px solid var(--line);border-radius:6px;font:inherit;font-size:13px}
+#gcText{width:100%;font:12px/1.4 ui-monospace,Menlo,monospace;border:1px solid var(--line);border-radius:8px;padding:8px;resize:vertical}
+.filebtn{padding:8px 12px;border:1px solid var(--line);background:#f7f9fb;border-radius:8px;cursor:pointer;font-size:15px}
+.gcbar{height:6px;background:#e3e8ee;border-radius:3px;overflow:hidden;margin-top:10px}
+#gcProg{height:100%;width:0;background:var(--good)}
+.lim{display:grid;grid-template-columns:34px 1fr 1fr;gap:6px;align-items:center;margin:8px 0 2px}
+.lim b{font-weight:600}
+.lim label{font-size:12px;color:var(--mute);display:flex;align-items:center;gap:4px}
+.limBtns{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin:0 0 8px 40px}
+.limBtns button{padding:6px 4px;border:1px solid var(--line);background:#f7f9fb;border-radius:6px;font:inherit;font-size:12px;cursor:pointer}
+.row .nudge{touch-action:none;user-select:none;-webkit-user-select:none}
+.row .nudge.active{background:var(--ink);color:#fff}
+</style>
+</head>
+<body>
+<div class="bar">
+<h1>TW2KA arm controller</h1>
+<span id="status"><span class="dot" id="dot"></span>Not connected (simulation only)</span>
+<button id="conn">Connect Teensy</button>
+<button id="estop">STOP</button>
+</div>
+<main>
+<div id="stageWrap"><canvas id="stage"></canvas><div id="warn"></div>
+<div id="hint">Drag to rotate, scroll or pinch to zoom</div>
+<div id="legend">Solid: commanded pose<br>Faint: reported motor position</div></div>
+
+<div id="side" style="display:grid;gap:12px">
+<section class="card">
+<div class="tabs" role="group" aria-label="Control mode">
+<button id="tabJ" aria-pressed="true">Joint control</button>
+<button id="tabC" aria-pressed="false">Cartesian (IK)</button>
+</div>
+<div id="jointPanel"></div>
+<p class="note" id="jogNote" style="margin-top:0">Press and <b>hold</b> − or + to jog a joint, just like your old GUI. Drag a slider to go to an exact angle.</p>
+<div id="cartPanel" hidden>
+<div class="seg" role="group" aria-label="Cartesian mode" style="margin-bottom:6px">
+<button id="cmHold" aria-pressed="true">Hold tool angle (6 joints)</button>
+<button id="cmPos" aria-pressed="false">Position only (wrist stays still)</button>
+</div>
+<div class="row" style="grid-template-columns:1fr 90px;margin:4px 0 8px"><label for="floorZ" style="font-weight:500">Lowest flange height above the table (mm)</label><input type="number" id="floorZ" value="30" step="1"></div>
+<p class="note" id="cmNote" style="margin-top:0">The tool keeps pointing the same way, so J4–J6 turn to make up for the arm tilting.</p>
+</div>
+<div class="sub">Nudge step (simulation mode only)</div>
+<div class="seg" id="stepSeg"></div>
+</section>
+
+<section class="card">
+<h2>Current pose</h2>
+<div class="readout" id="readout"></div>
+</section>
+
+<section class="card">
+<h2>Motor enable</h2>
+<div class="en" id="enPanel"></div>
+<div class="actions"><button id="enAll">Enable all</button><button id="disAll">Disable all</button></div>
+<div class="sub">Motor direction: tap to reverse a joint whose real motion is opposite to the 3D model</div>
+<div class="en" id="invPanel"></div>
+<div class="sub">Hardware test: pulses the motor 1600 steps forward and back, like your old sketch does</div>
+<div class="en" id="testPanel"></div>
+<p class="note">A disabled motor is free: it can be turned by hand and J2/J3 can drop under gravity. Support the arm first, and re-home after re-enabling if a joint was moved.</p>
+</section>
+
+<section class="card">
+<h2>Zero and limits</h2>
+<p class="note" style="margin-top:0"><b>If a joint moves less (or more) than the app shows:</b> jog it, note the angle change in the app, measure the real change, then press <b>fix from measurement</b>.</p>
+<p class="note">To find a joint's real travel: type a wider limit, jog slowly to the physical end, then press <b>max here</b> or <b>min here</b>. <b>zero here</b> makes the current position 0° for that joint and is re-applied after every homing. All of this is saved on the Teensy.</p>
+<div id="limPanel"></div>
+<div class="actions"><button id="resetCal">Forget saved zeros and limits</button></div>
+</section>
+
+<section class="card">
+<h2>Homing and endstops <span id="homeState" style="color:var(--bad)">· not homed</span></h2>
+<div class="sw" id="swPanel"></div>
+<div class="actions"><button class="primary" id="homeAll">Home all (J1–J5)</button><button id="cancelHome">Stop homing</button></div>
+<p class="note">If a joint homes the wrong way: press <b>Stop homing</b>, jog it with − or + to find which button moves it toward its switch, then set <b>toward</b> to that button and home again. The setting is saved on the Teensy.</p>
+<p class="note">J6 has no switch, so it counts its power-up position as zero. Line J6 up by eye before homing.</p>
+</section>
+
+<section class="card">
+<h2>Motion</h2>
+<label class="switch"><input type="checkbox" id="live" checked> Send moves live while dragging</label>
+<div class="row" style="grid-template-columns:90px 1fr 70px"><label for="spd" style="font-weight:500">Speed</label><input type="range" id="spd" min="5" max="120" value="30"><output id="spdOut">30°/s</output></div>
+<div class="actions">
+<button class="primary" id="send">Send move</button>
+<button id="home">Go to zero pose</button>
+<button id="toolDown">Tool pointing down</button>
+<button id="setZero">Set current as zero</button>
+<button id="resume">Re-enable motors</button>
+</div>
+<p class="note">Joint jogging works before homing, but soft limits are off until you home, so go slowly. Cartesian (IK) moves need homing first.</p>
+</section>
+
+<section class="card">
+<h2>G-code drawing</h2>
+<ol class="note" style="padding-left:18px;margin-top:0">
+<li>Hold the pen at the tool angle you like (flange facing +X with the pen pointing down is fine). Enter the pen offset below.</li>
+<li>Jog the pen tip onto the paper where the drawing should be (or just above it), then press <b>Set drawing origin here</b>.</li>
+<li>Load or generate G-code, press <b>Check path</b>, then <b>Run</b>. Test pen down/up is optional.</li>
+</ol>
+<div class="gcg">
+<label>Pen tip below the flange (mm)<input type="number" id="gcBelow" value="0" step="1"></label>
+<label>Pen tip ahead of the flange (mm)<input type="number" id="gcAhead" value="0" step="1"></label>
+<label>Paper is this far below the pen tip at the origin (mm)<input type="number" id="gcDepth" value="0" step="0.5" min="0"></label>
+<label>Pen-up lift (mm)<input type="number" id="gcLift" value="5" step="0.5" min="1"></label>
+</div>
+<div class="actions"><button class="primary" id="gcOrigin">Set drawing origin here</button><button id="gcTest">Test pen down</button><button id="gcUp">Pen up</button></div>
+<div class="actions"><button id="gcArea">Find drawing area</button><button id="gcFit">Fit G-code to area</button></div>
+<p class="note" id="areaInfo"></p>
+<div class="gcg">
+<label>Scale (%)<input type="number" id="gcScale" value="100" step="1" min="1"></label>
+<label>Rotate<select id="gcRot"><option value="0">0°</option><option value="90">90°</option><option value="180">180°</option><option value="270">270°</option></select></label>
+<label>Offset X (mm)<input type="number" id="gcOffX" value="0" step="1"></label>
+<label>Offset Y (mm)<input type="number" id="gcOffY" value="0" step="1"></label>
+<label>Draw speed (mm/s)<input type="number" id="gcDraw" value="10" step="1" min="1"></label>
+<label>Travel speed (mm/s)<input type="number" id="gcTravel" value="25" step="1" min="1"></label>
+</div>
+<textarea id="gcText" rows="7" spellcheck="false" placeholder="Paste G-code here, open a file, or generate it from an image below (G0/G1/G2/G3, G90/G91, G20/G21, M3/M5)"></textarea>
+<div class="actions"><label class="filebtn">Open G-code…<input type="file" id="gcFile" accept=".gcode,.nc,.ngc,.gc,.tap,.txt" hidden></label>
+<button id="gcCheck">Check path</button><button class="primary" id="gcRun">Run</button><button id="gcPause">Pause</button><button id="gcStop">Stop</button></div>
+<div class="gcbar"><div id="gcProg"></div></div>
+<p class="note" id="gcStatus">No origin set.</p>
+</section>
+
+<section class="card">
+<h2>Image to G-code</h2>
+<p class="note" style="margin-top:0">SVG files are traced along their lines. Photos and PNG/JPG drawings are turned into outlines or hatching. The drawing is sized to fit the area the arm can reach from your origin.</p>
+<div class="actions"><label class="filebtn">Open image (SVG, PNG, JPG)…<input type="file" id="imgFile" accept=".svg,image/svg+xml,image/png,image/jpeg,image/webp" hidden></label></div>
+<div class="gcg">
+<label>Max width (mm, 0 = fill area)<input type="number" id="imgMaxW" value="0" step="5" min="0"></label>
+<label>Margin inside area (mm)<input type="number" id="imgMargin" value="5" step="1" min="0"></label>
+</div>
+<div id="imgRasterOpts" hidden>
+<div class="gcg">
+<label>Style<select id="imgMode"><option value="outline">Outline</option><option value="hatch">Hatch fill</option></select></label>
+<label>Darkness threshold (0–255)<input type="number" id="imgTh" value="128" step="5" min="1" max="254"></label>
+<label id="imgSpRow" hidden>Hatch spacing (mm)<input type="number" id="imgSp" value="1.5" step="0.5" min="0.5"></label>
+</div>
+</div>
+<div class="actions"><button class="primary" id="imgGen">Generate G-code</button></div>
+<p class="note" id="imgInfo"></p>
+</section>
+
+<section class="card">
+<h2>Serial log</h2>
+<div id="log"></div>
+</section>
+
+<section class="card">
+<h2>DH parameters</h2>
+<table class="dh" id="dhTable"></table>
+<p class="note">From your Fusion 360 measurements. The α signs and θ offsets are the unverified part: if FK disagrees with CAD, flip a sign here and the IK adapts automatically. Copy the final values into the CONFIG block in this file.</p>
+</section>
+</div>
+</main>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ===================== CONFIG + KINEMATICS =====================
+// ===== ROBOT CONFIG: from your Fusion 360 measurements (mm, degrees) =====
+const DH=[ // a, alpha(deg), d, theta offset(deg)
+  {a:37.5, alpha:-90, d:135.3, off:0},
+  {a:160,  alpha:0,   d:0,     off:-90},
+  {a:15,   alpha:-90, d:0,     off:0},
+  {a:0,    alpha:90,  d:138.4, off:0},
+  {a:0,    alpha:-90, d:0,     off:0},
+  {a:0,    alpha:0,   d:48,    off:0}, // d6 = wrist centre to tool flange, you measured 47–50 mm
+];
+const LIMITS=[[-144,144],[-13,87],[-54,68],[-180,10],[-20,120],[-180,180]]; // must match LIM_MIN/LIM_MAX in the firmware
+const D2R=Math.PI/180;
+function dhMat(a,al,d,th){const ca=Math.cos(al),sa=Math.sin(al),ct=Math.cos(th),st=Math.sin(th);
+ return [[ct,-st*ca,st*sa,a*ct],[st,ct*ca,-ct*sa,a*st],[0,sa,ca,d],[0,0,0,1]];}
+function mm4(A,B){const C=[[0,0,0,0],[0,0,0,0],[0,0,0,0],[0,0,0,0]];
+ for(let i=0;i<4;i++)for(let j=0;j<4;j++)for(let k=0;k<4;k++)C[i][j]+=A[i][k]*B[k][j];return C;}
+// Forward kinematics: returns every frame T0..T6 (T0 = base)
+function fkFrames(qDeg){let T=[[1,0,0,0],[0,1,0,0],[0,0,1,0],[0,0,0,1]];const Ts=[T];
+ for(let i=0;i<6;i++){const p=DH[i];T=mm4(T,dhMat(p.a,p.alpha*D2R,p.d,(qDeg[i]+p.off)*D2R));Ts.push(T);}return Ts;}
+const col=(T,j)=>[T[0][j],T[1][j],T[2][j]];
+const cross=(a,b)=>[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];
+function solve(A,b){const n=b.length,M=A.map((r,i)=>[...r,b[i]]);
+ for(let c=0;c<n;c++){let p=c;for(let r=c+1;r<n;r++)if(Math.abs(M[r][c])>Math.abs(M[p][c]))p=r;[M[c],M[p]]=[M[p],M[c]];
+  for(let r=0;r<n;r++)if(r!==c){const f=M[r][c]/M[c][c];for(let k=c;k<=n;k++)M[r][k]-=f*M[c][k];}}
+ return M.map((r,i)=>r[n]/r[i]);}
+// Pose error: position (mm) + orientation (rad, scaled by ROT_W mm/rad)
+const ROT_W=100;
+const LOCK=[false,false,false,false,false,false]; // joints the IK must not move (disabled motors)
+function poseErr(T,P,R){const p=col(T,3);let e=[P[0]-p[0],P[1]-p[1],P[2]-p[2]];
+ let w=[0,0,0];for(let j=0;j<3;j++){const c=cross(col(T,j),[R[0][j],R[1][j],R[2][j]]);w=w.map((v,i)=>v+0.5*c[i]);}
+ return e.concat(w.map(v=>v*ROT_W));}
+// Inverse kinematics: damped least squares, seeded from current joints so it
+// always picks the solution closest to where the arm already is.
+// Works with ANY DH table, so it keeps working if you flip α signs during validation.
+// posOnly: solve position with J1–J3 only and leave the wrist (J4–J6) where it is
+function ik(P,R,seedDeg,iters=150,posOnly=false){let q=seedDeg.slice();let lam=1.0;
+ for(let it=0;it<iters;it++){const Ts=fkFrames(q),Tn=Ts[6],pe=col(Tn,3);
+  const e=poseErr(Tn,P,R);if(posOnly)e[3]=e[4]=e[5]=0;const ep=Math.hypot(e[0],e[1],e[2]),er=Math.hypot(e[3],e[4],e[5])/ROT_W;
+  if(ep<0.01&&er<1e-5)return {ok:true,q,ep,er,it};
+  const J=[];for(let i=0;i<6;i++){const z=col(Ts[i],2),o=col(Ts[i],3);
+   const v=cross(z,[pe[0]-o[0],pe[1]-o[1],pe[2]-o[2]]);J.push(LOCK[i]||(posOnly&&i>=3)?[0,0,0,0,0,0]:[...v,...(posOnly?[0,0,0]:z.map(x=>x*ROT_W))]);} // J[i] = column i (per rad)
+  const JJt=[...Array(6)].map((_,r)=>[...Array(6)].map((_,c)=>{let s=0;for(let i=0;i<6;i++)s+=J[i][r]*J[i][c];return s+(r===c?lam*lam:0);}));
+  const y=solve(JJt,e);
+  q=q.map((v,i)=>{let d=0;for(let r=0;r<6;r++)d+=J[i][r]*y[r];d/=D2R;d=Math.max(-10,Math.min(10,d));
+   return Math.max(LIMITS[i][0],Math.min(LIMITS[i][1],v+d));});}
+ const Tn=fkFrames(q)[6],e=poseErr(Tn,P,R);
+ return {ok:false,q,ep:Math.hypot(e[0],e[1],e[2]),er:Math.hypot(e[3],e[4],e[5])/ROT_W};}
+// If the nearby solve fails (big jump), retry from a few other starting poses
+function ikRobust(P,R,seedDeg){let r=ik(P,R,seedDeg);if(r.ok)return r;let best=r;
+ const seeds=[[0,0,0,0,0,0],[0,30,-60,0,30,0],[0,-30,60,0,-30,0],[180,0,0,0,0,0]];
+ for(let k=0;k<12;k++){const s=k<seeds.length?seeds[k].map((v,i)=>Math.max(LIMITS[i][0],Math.min(LIMITS[i][1],v+seedDeg[i]*(i>2?1:0)))):LIMITS.map(([a,b])=>a+(b-a)*Math.random());
+  for(let i=0;i<6;i++)if(LOCK[i])s[i]=seedDeg[i];const t=ik(P,R,s,250);if(t.ok){t.q=t.q;return t;}if(t.ep<best.ep)best=t;}return best;}
+
+
+// ===================== APP STATE =====================
+const JC=['--j1','--j2','--j3','--j4','--j5','--j6'].map(v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim());
+let q=[0,0,0,0,0,0];            // commanded joint angles (deg)
+let qActual=null;               // last position reported by Teensy
+let mode='joint', step=1;
+let cart={x:0,y:0,z:0,roll:0,pitch:0,yaw:0};
+const $=id=>document.getElementById(id);
+const rotX=a=>{const c=Math.cos(a),s=Math.sin(a);return[[1,0,0],[0,c,-s],[0,s,c]]};
+const rotY=a=>{const c=Math.cos(a),s=Math.sin(a);return[[c,0,s],[0,1,0],[-s,0,c]]};
+const rotZ=a=>{const c=Math.cos(a),s=Math.sin(a);return[[c,-s,0],[s,c,0],[0,0,1]]};
+const m3=(A,B)=>A.map(r=>[0,1,2].map(j=>r[0]*B[0][j]+r[1]*B[1][j]+r[2]*B[2][j]));
+const rpyToR=(r,p,y)=>m3(m3(rotZ(y*D2R),rotY(p*D2R)),rotX(r*D2R));
+function poseOf(T){const R=T.slice(0,3).map(r=>r.slice(0,3));
+ return {x:T[0][3],y:T[1][3],z:T[2][3],pitch:Math.atan2(-R[2][0],Math.hypot(R[0][0],R[1][0]))/D2R,roll:Math.atan2(R[2][1],R[2][2])/D2R,yaw:Math.atan2(R[1][0],R[0][0])/D2R};}
+
+// ===================== UI BUILD =====================
+function makeRow(parent,id,label,min,max,color,unit){
+ const d=document.createElement('div');d.className='row';
+ d.innerHTML=`<label for="r_${id}" style="color:${color||'inherit'}">${label}</label><button class="nudge" data-d="-1" aria-label="${label} minus">−</button><input id="r_${id}" type="range" min="${min}" max="${max}" step="0.1"><button class="nudge" data-d="1" aria-label="${label} plus">+</button><output id="o_${id}"></output>`;
+ parent.appendChild(d);return d;}
+const jp=$('jointPanel');
+for(let i=0;i<6;i++){const d=makeRow(jp,'j'+i,'J'+(i+1),LIMITS[i][0],LIMITS[i][1],JC[i]);
+ d.querySelector('input').addEventListener('input',e=>{q[i]=+e.target.value;onChange();});
+ d.querySelectorAll('.nudge').forEach(b=>{
+  b.addEventListener('pointerdown',e=>{e.preventDefault();b.setPointerCapture(e.pointerId);
+   if(!writer){q[i]=Math.max(LIMITS[i][0],Math.min(LIMITS[i][1],q[i]+step*b.dataset.d));onChange();return;} // simulation: nudge
+   jogStart(i,+b.dataset.d,b);});
+  ['pointerup','pointercancel','lostpointercapture'].forEach(ev=>b.addEventListener(ev,jogStop));
+  b.addEventListener('contextmenu',e=>e.preventDefault());});}
+const cp=$('cartPanel');
+const CK=[['x','X',-400,400,'mm'],['y','Y',-400,400,'mm'],['z','Z',-100,460,'mm'],['roll','Roll',-180,180,'°'],['pitch','Pitch',-180,180,'°'],['yaw','Yaw',-180,180,'°']];
+CK.forEach(([k,lab,mn,mx],n)=>{if(n===3){const s=document.createElement('div');s.className='sub';s.textContent='Tool orientation (degrees, about base axes)';cp.appendChild(s);}
+ if(n===0){const s=document.createElement('div');s.className='sub';s.style.marginTop='0';s.textContent='Tool position (mm, base frame)';cp.appendChild(s);}
+ const d=makeRow(cp,'c'+k,lab,mn,mx);
+ d.querySelector('input').addEventListener('input',e=>{cart[k]=+e.target.value;solveCart();});
+ d.querySelectorAll('.nudge').forEach(b=>b.onclick=()=>{cart[k]+=step*b.dataset.d;solveCart();});});
+const steps=[0.1,1,5,10];
+$('stepSeg').innerHTML=steps.map(s=>`<button aria-pressed="${s===1}" data-s="${s}">${s}</button>`).join('');
+$('stepSeg').querySelectorAll('button').forEach(b=>b.onclick=()=>{step=+b.dataset.s;$('stepSeg').querySelectorAll('button').forEach(x=>x.setAttribute('aria-pressed',x===b));});
+function setCartMode(p){posOnly=p;$('cmHold').setAttribute('aria-pressed',!p);$('cmPos').setAttribute('aria-pressed',p);
+ $('cmNote').textContent=p?'Only J1–J3 move. J4–J6 stay exactly where they are, so the tool angle changes as the arm tilts.':'The tool keeps pointing the same way, so J4–J6 turn to make up for the arm tilting.';
+ ['roll','pitch','yaw'].forEach(k=>{const r=$('r_c'+k).closest('.row');r.classList.toggle('off',p);r.querySelectorAll('input,button').forEach(x=>x.disabled=p);});
+ cart=poseOf(fkFrames(q)[6]);$('warn').style.display='none';refresh();}
+$('cmHold').onclick=()=>setCartMode(false);$('cmPos').onclick=()=>setCartMode(true);
+function setMode(m){mode=m;$('tabJ').setAttribute('aria-pressed',m==='joint');$('tabC').setAttribute('aria-pressed',m==='cart');
+ $('jointPanel').hidden=m!=='joint';$('cartPanel').hidden=m!=='cart';
+ if(m==='cart'){cart=poseOf(fkFrames(q)[6]);} $('warn').style.display='none';refresh();}
+$('tabJ').onclick=()=>setMode('joint');$('tabC').onclick=()=>setMode('cart');
+
+// DH editor
+const dhT=$('dhTable');
+dhT.innerHTML='<tr><th>J</th><th>a (mm)</th><th>α (°)</th><th>d (mm)</th><th>θ offset (°)</th></tr>'+
+ DH.map((p,i)=>`<tr><td style="color:${JC[i]};font-weight:600">${i+1}</td>`+['a','alpha','d','off'].map(k=>`<td><input type="number" step="any" data-i="${i}" data-k="${k}" value="${p[k]}" aria-label="J${i+1} ${k}"></td>`).join('')+'</tr>').join('');
+dhT.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{const v=parseFloat(inp.value);if(!isNaN(v)){DH[+inp.dataset.i][inp.dataset.k]=v;if(mode==='cart')cart=poseOf(fkFrames(q)[6]);refresh();}}));
+
+// ===================== IK in Cartesian mode =====================
+let posOnly=false;
+// Table protection: the base mounting face is Z = 0. Keep the elbow, wrist and flange above it.
+function floorHit(qq){const Ts=fkFrames(qq),fl=parseFloat($('floorZ').value)||0;
+ if(col(Ts[6],3)[2]<fl)return `the tool flange would go below ${fl} mm (table limit)`;
+ for(const k of [2,3,4])if(col(Ts[k],3)[2]<5)return 'the arm would hit the table';return null;}
+function solveCart(){
+ if(writer&&!homed){$('warn').style.display='block';$('warn').textContent='Home the arm first: Cartesian moves need to know where the joints really are.';cart=poseOf(fkFrames(q)[6]);refresh();return;}
+ const P=[cart.x,cart.y,cart.z],R=rpyToR(cart.roll,cart.pitch,cart.yaw);
+ // Solve from the current joints only: no restarts, so the wrist can never flip 180° behind your back
+ const r=ik(P,R,q,200,posOnly);
+ const jump=Math.max(...r.q.map((v,i)=>Math.abs(v-q[i])));
+ const fh=r.ok?floorHit(r.q):null;
+ if(fh){$('warn').style.display='block';$('warn').textContent='Stopped: '+fh+'. Lower the limit only if nothing is under the arm.';cart=poseOf(fkFrames(q)[6]);refresh();return;}
+ if(r.ok&&jump<=25){q=r.q;$('warn').style.display='none';
+  if(posOnly){const p=poseOf(fkFrames(q)[6]);cart.roll=p.roll;cart.pitch=p.pitch;cart.yaw=p.yaw;}
+  onChange(true);return;}
+ const atLim=r.q.map((v,i)=>Math.abs(v-LIMITS[i][0])<0.6||Math.abs(v-LIMITS[i][1])<0.6?'J'+(i+1):null).filter(Boolean);
+ $('warn').style.display='block';
+ $('warn').textContent=r.ok?`Blocked: that step would swing a joint ${jump.toFixed(0)}° at once (a wrist flip). Use smaller steps or change the tool angle.`
+  :atLim.length?`Stopped: ${atLim.join(' and ')} reached ${atLim.length>1?'their':'its'} limit. ${posOnly?'':'Try "Position only", or tilt the tool (pitch) so the wrist has room.'}`
+  :`Can't reach that point from here (off by ${r.ep.toFixed(1)} mm).`;
+ cart=poseOf(fkFrames(q)[6]);refresh();   // sliders snap back to where the arm really is
+}
+
+// ===================== 3D VIEW =====================
+const canvas=$('stage');
+const renderer=new THREE.WebGLRenderer({canvas,antialias:true});renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+const scene=new THREE.Scene();scene.background=new THREE.Color(0x1f2632);
+const cam=new THREE.PerspectiveCamera(45,1,0.005,20);cam.up.set(0,0,1);
+scene.add(new THREE.HemisphereLight(0xffffff,0x334455,0.9));
+const dl=new THREE.DirectionalLight(0xffffff,0.7);dl.position.set(1,-2,3);scene.add(dl);
+const grid=new THREE.GridHelper(0.8,16,0x55627a,0x343d4d);grid.rotation.x=Math.PI/2;scene.add(grid);
+scene.add(new THREE.AxesHelper(0.1));
+const S=0.001; // mm -> scene units
+const arm=new THREE.Group(),ghost=new THREE.Group();scene.add(arm);scene.add(ghost);
+const V=p=>new THREE.Vector3(p[0]*S,p[1]*S,p[2]*S);
+function clear(g){while(g.children.length){const c=g.children.pop();c.traverse(o=>{o.geometry&&o.geometry.dispose();o.material&&o.material.dispose&&o.material.dispose();});}}
+function rod(g,a,b,r,color,op){const A=V(a),B=V(b),len=A.distanceTo(B);if(len<1e-6)return;
+ const m=new THREE.Mesh(new THREE.CylinderGeometry(r*S,r*S,len,18),new THREE.MeshStandardMaterial({color,roughness:.5,metalness:.15,transparent:op<1,opacity:op}));
+ m.position.copy(A).add(B).multiplyScalar(.5);m.quaternion.setFromUnitVectors(new THREE.Vector3(0,1,0),B.clone().sub(A).normalize());g.add(m);}
+function drawArm(g,qq,op){
+ const Ts=fkFrames(qq);
+ rod(g,[0,0,-4],[0,0,10],28,0x6b7688,op);
+ for(let i=0;i<6;i++){const T=Ts[i],o=col(T,3),z=col(T,2),mid=[o[0]+z[0]*DH[i].d,o[1]+z[1]*DH[i].d,o[2]+z[2]*DH[i].d],o2=col(Ts[i+1],3);
+  // joint i+1 rotates about z of frame i: draw it as a short coloured drum
+  rod(g,[o[0]-z[0]*14,o[1]-z[1]*14,o[2]-z[2]*14],[o[0]+z[0]*14,o[1]+z[1]*14,o[2]+z[2]*14],i<3?16:11,JC[i],op);
+  rod(g,o,mid,i<3?10:7,0xc9d1dc,op);rod(g,mid,o2,i<3?10:7,0xc9d1dc,op);}
+ return Ts[6];}
+function frameAxes(g,T,s){const o=V(col(T,3));[0xe0584f,0x5fbf6b,0x5b8def].forEach((c,j)=>g.add(new THREE.ArrowHelper(new THREE.Vector3(...col(T,j)),o,s,c,s*.25,s*.15)));}
+const orb={th:-0.9,ph:0.4,r:1.1,t:new THREE.Vector3(0.08,0,0.18)};
+function place(){cam.position.set(orb.t.x+orb.r*Math.cos(orb.ph)*Math.cos(orb.th),orb.t.y+orb.r*Math.cos(orb.ph)*Math.sin(orb.th),orb.t.z+orb.r*Math.sin(orb.ph));cam.lookAt(orb.t);}
+const ptrs=new Map();let pinch=0;
+canvas.addEventListener('pointerdown',e=>{canvas.setPointerCapture(e.pointerId);ptrs.set(e.pointerId,[e.clientX,e.clientY]);});
+canvas.addEventListener('pointermove',e=>{if(!ptrs.has(e.pointerId))return;const p=ptrs.get(e.pointerId);
+ if(ptrs.size===1){orb.th-=(e.clientX-p[0])*0.008;orb.ph=Math.max(-0.3,Math.min(1.5,orb.ph+(e.clientY-p[1])*0.008));}
+ ptrs.set(e.pointerId,[e.clientX,e.clientY]);
+ if(ptrs.size===2){const [a,b]=[...ptrs.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);if(pinch)orb.r=Math.max(.3,Math.min(4,orb.r*pinch/d));pinch=d;}
+ render();});
+const pu=e=>{ptrs.delete(e.pointerId);pinch=0;};canvas.addEventListener('pointerup',pu);canvas.addEventListener('pointercancel',pu);
+canvas.addEventListener('wheel',e=>{e.preventDefault();orb.r=Math.max(.3,Math.min(4,orb.r*(1+e.deltaY*0.001)));render();},{passive:false});
+function resize(){const w=canvas.clientWidth,h=canvas.clientHeight;renderer.setSize(w,h,false);cam.aspect=w/h;cam.updateProjectionMatrix();render();}
+addEventListener('resize',resize);
+function render(){place();renderer.render(scene,cam);}
+
+// ===================== REFRESH =====================
+function refresh(){
+ clear(arm);clear(ghost);
+ const Tn=drawArm(arm,q,1);frameAxes(arm,Tn,0.06);
+ if(qActual&&qActual.some((v,i)=>Math.abs(v-q[i])>0.2))drawArm(ghost,qActual,0.25);
+ if(mode==='cart'){const t=new THREE.Mesh(new THREE.SphereGeometry(0.008,14,10),new THREE.MeshBasicMaterial({color:0xffffff,wireframe:true}));t.position.copy(V([cart.x,cart.y,cart.z]));arm.add(t);}
+ render();
+ for(let i=0;i<6;i++){$('r_j'+i).value=q[i];$('o_j'+i).textContent=q[i].toFixed(1)+'°';}
+ CK.forEach(([k,,,,u])=>{$('r_c'+k).value=cart[k];$('o_c'+k).textContent=cart[k].toFixed(1)+(u==='mm'?' mm':'°');});
+ const p=poseOf(Tn);
+ $('readout').innerHTML=[['X',p.x,' mm'],['Y',p.y,' mm'],['Z',p.z,' mm'],['Roll',p.roll,'°'],['Pitch',p.pitch,'°'],['Yaw',p.yaw,'°']].map(([l,v,u])=>`<div><b>${l}</b>${v.toFixed(1)}${u}</div>`).join('')+
+  q.map((v,i)=>`<div><b style="color:${JC[i]}">J${i+1}</b>${v.toFixed(1)}°</div>`).join('');
+}
+function onChange(fromCart){if(!fromCart&&mode==='cart')cart=poseOf(fkFrames(q)[6]);refresh();if($('live').checked)queueSend();}
+
+// ===================== SERIAL (Web Serial API) =====================
+// Protocol (one line each):  M j1..j6 (deg) | V deg/s | Z set zero | S smooth stop | E e-stop | R re-enable | ? report
+let port=null,writer=null,estopped=false,sendTimer=null,lastSent='';
+function log(s){const l=$('log');l.textContent+=s+'\n';if(l.textContent.length>6000)l.textContent=l.textContent.slice(-4000);l.scrollTop=l.scrollHeight;}
+async function write(line){if(!writer)return;await writer.write(new TextEncoder().encode(line+'\n'));if(line[0]!=='M'||performance.now()-lastMlog>400){log('> '+line);if(line[0]==='M')lastMlog=performance.now();}}
+let lastMlog=0;
+function queueSend(){if(sendTimer)return;sendTimer=setTimeout(()=>{sendTimer=null;sendMove();},50);} // max 20 updates/s
+function clearStop(){if(!estopped)return;estopped=false;$('estop').classList.remove('latched');$('estop').textContent='STOP';if(qActual)q=qActual.slice();lastSent='M '+q.map(v=>v.toFixed(2)).join(' ');$('warn').style.display='none';refresh();}
+function sendMove(){if(estopped){$('warn').style.display='block';$('warn').textContent='Motors are stopped. Press Enable all or Re-enable motors to move again.';return;}const s='M '+q.map(v=>v.toFixed(2)).join(' ');if(s!==lastSent){lastSent=s;write(s);}}
+$('conn').onclick=async()=>{
+ if(!('serial' in navigator)){log('Web Serial is not available in this browser. Use Chrome or Edge on a computer.');alert('Use Chrome or Edge on a desktop to connect to the Teensy. Simulation still works here.');return;}
+ if(port){try{writer.releaseLock();await port.close();}catch(e){}port=null;writer=null;setStatus(false);return;}
+ try{port=await navigator.serial.requestPort();await port.open({baudRate:115200});writer=port.writable.getWriter();setStatus(true);
+  write('V '+$('spd').value);write('?');readLoop();}catch(e){log('Connect failed: '+e.message);port=null;}};
+function setStatus(on){$('dot').classList.toggle('on',on);$('status').lastChild.textContent=on?'Connected to Teensy':'Not connected (simulation only)';$('conn').textContent=on?'Disconnect':'Connect Teensy';}
+async function readLoop(){const dec=new TextDecoderStream();port.readable.pipeTo(dec.writable).catch(()=>{});const rd=dec.readable.getReader();let buf='';
+ try{while(true){const {value,done}=await rd.read();if(done)break;buf+=value;let i;
+  while((i=buf.indexOf('\n'))>=0){const line=buf.slice(0,i).trim();buf=buf.slice(i+1);if(!line)continue;
+   if(line.startsWith('P ')){const v=line.slice(2).split(/\s+/).map(Number);if(v.length===6&&v.every(isFinite)){qActual=v;const coasting=performance.now()<followUntil;if(homingActive||jog||coasting)q=v.slice();else jEn.forEach((on,i)=>{if(!on)q[i]=v[i];});if(jog||coasting){lastSent='M '+q.map(x=>x.toFixed(2)).join(' ');if(mode==='cart')cart=poseOf(fkFrames(q)[6]);}refresh();}}
+   else handleLine(line);}}}catch(e){log('Serial closed: '+e.message);}
+ setStatus(false);port=null;writer=null;}
+$('estop').onclick=()=>{GC.abort=true;if(!estopped){estopped=true;write('E');$('estop').classList.add('latched');$('estop').textContent='STOPPED';log('E-stop: motors disabled');}};
+$('resume').onclick=()=>{estopped=false;$('estop').classList.remove('latched');$('estop').textContent='STOP';if(qActual)q=qActual.slice();lastSent='';write('R');refresh();};
+$('send').onclick=()=>{lastSent='';sendMove();};
+$('home').onclick=()=>{q=[0,0,0,0,0,0];onChange();if(!$('live').checked){lastSent='';sendMove();}};
+$('toolDown').onclick=()=>{q=[0,0,0,0,90,0];onChange();if(!$('live').checked){lastSent='';sendMove();}};
+$('setZero').onclick=()=>{if(confirm('Make the current position 0° on every joint? For homed joints this is saved and the limits move with it. Only do this when the real arm matches the 3D model\'s zero pose (forearm level, wrist straight, flange facing forward).')){write('Z');setHomed(true);q=[0,0,0,0,0,0];qActual=q.slice();lastSent='';onChange();}};
+$('spd').addEventListener('input',e=>{$('spdOut').textContent=e.target.value+'°/s';write('V '+e.target.value);});
+// ===================== PER-JOINT ENABLE + TEST =====================
+let jEn=[true,true,true,true,true,true];
+$('enPanel').innerHTML=jEn.map((_,i)=>`<button id="en${i}" aria-pressed="true"><b>J${i+1}</b><small>on</small></button>`).join('');
+$('testPanel').innerHTML=jEn.map((_,i)=>`<button id="test${i}"><b>J${i+1}</b><small>test</small></button>`).join('');
+jEn.forEach((_,i)=>$('test'+i).onclick=()=>{if(!writer){log('Connect the Teensy first.');return;}write('T '+(i+1));});
+let inv=[0,0,0,0,0,0];
+$('invPanel').innerHTML=inv.map((_,i)=>`<button id="inv${i}" aria-pressed="false"><b>J${i+1}</b><small>normal</small></button>`).join('');
+function showInv(){inv.forEach((v,i)=>{const b=$('inv'+i);b.setAttribute('aria-pressed',!!v);b.querySelector('small').textContent=v?'reversed':'normal';});}
+inv.forEach((_,i)=>$('inv'+i).onclick=()=>{if(!writer){log('Connect the Teensy first.');return;}
+ if(confirm(`${inv[i]?'Set J'+(i+1)+' back to normal':'Reverse J'+(i+1)}? The arm won't move; its + and − swap so they match the 3D model. Homing still goes toward the same switch.`))write(`I ${i+1} ${inv[i]?0:1}`);});
+function showEnable(){jEn.forEach((on,i)=>{const b=$('en'+i);b.setAttribute('aria-pressed',on);b.querySelector('small').textContent=on?'on':'off';
+ LOCK[i]=!on;const r=$('r_j'+i).closest('.row');r.classList.toggle('off',!on);r.querySelectorAll('input,button').forEach(x=>x.disabled=!on);});}
+function setJointEnable(i,on){if(on)clearStop();if(!on&&(i===1||i===2)&&!confirm(`Disable J${i+1}? The arm may drop under gravity.`))return;
+ jEn[i]=on;showEnable();write(`N ${i+1} ${on?1:0}`);}
+jEn.forEach((_,i)=>$('en'+i).onclick=()=>setJointEnable(i,!jEn[i]));
+$('enAll').onclick=()=>{clearStop();jEn.forEach((on,i)=>{if(!on){jEn[i]=true;write(`N ${i+1} 1`);}});showEnable();};
+$('disAll').onclick=()=>{if(!confirm('Disable all motors? The arm may drop under gravity.'))return;jEn.forEach((on,i)=>{if(on){jEn[i]=false;write(`N ${i+1} 0`);}});showEnable();};
+
+// ===================== HOMING / ENDSTOPS =====================
+let homed=false,homingActive=false;
+$('swPanel').innerHTML=[1,2,3,4,5].map(i=>`<div id="sw${i}"><b style="color:${JC[i-1]}">J${i}</b><span></span><br><small>open</small><button data-j="${i}" class="home">Home</button><button class="dir" data-dj="${i}" title="Which jog button moves this joint toward its switch">toward ?</button></div>`).join('');
+let homeDir=[0,0,0,0,0];
+function showHomeDir(){homeDir.forEach((d,k)=>{const b=document.querySelector(`[data-dj="${k+1}"]`);b.textContent=d?`toward J${k+1} ${d>0?'+':'−'}`:'toward ?';});}
+document.querySelectorAll('[data-dj]').forEach(b=>b.onclick=()=>{if(!writer){log('Connect the Teensy first.');return;}const j=+b.dataset.dj;const nd=homeDir[j-1]>0?-1:1;
+ if(confirm(`Make J${j} look for its switch in the J${j} ${nd>0?'+':'−'} direction? Its soft limits flip to match.`))write(`D ${j} ${nd}`);});
+$('swPanel').querySelectorAll('button.home').forEach(b=>b.onclick=()=>{if(!writer){log('Connect the Teensy first.');return;}homingActive=true;write('H '+b.dataset.j);});
+$('homeAll').onclick=()=>{if(!writer){log('Connect the Teensy first.');return;}homingActive=true;write('H');};
+$('cancelHome').onclick=()=>{if(!writer)return;write('S');};
+function applyLimits(v){for(let i=0;i<6;i++){LIMITS[i][0]=v[2*i];LIMITS[i][1]=v[2*i+1];const r=$('r_j'+i);r.min=LIMITS[i][0];r.max=LIMITS[i][1];
+ const a=$('lmin'+i),b=$('lmax'+i);if(a&&document.activeElement!==a)a.value=LIMITS[i][0];if(b&&document.activeElement!==b)b.value=LIMITS[i][1];}}
+$('limPanel').innerHTML=[0,1,2,3,4,5].map(i=>`<div class="lim"><b style="color:${JC[i]}">J${i+1}</b>
+ <label>min<input type="number" step="1" id="lmin${i}" value="${LIMITS[i][0]}"></label><label>max<input type="number" step="1" id="lmax${i}" value="${LIMITS[i][1]}"></label></div>
+ <div class="limBtns"><button data-lm="${i}" data-k="min">min here</button><button data-lm="${i}" data-k="max">max here</button><button data-lz="${i}">zero here</button>${i<5?`<button data-le="${i}">endstop only</button>`:'<span></span>'}</div>
+ <div class="lim" style="margin-top:0"><span></span><label>steps/°<input type="number" step="any" id="spd${i}"></label><button class="nudge" style="height:30px;border:1px solid var(--line);background:#f7f9fb;border-radius:6px;font:inherit;font-size:12px;cursor:pointer" data-fix="${i}">fix from measurement</button></div>`).join('');
+function sendLimits(i,a,b){if(!writer){log('Connect the Teensy first.');return;}if(!(a<b)){log(`J${i+1}: min must be less than max.`);return;}write(`K ${i+1} ${a.toFixed(1)} ${b.toFixed(1)}`);}
+[0,1,2,3,4,5].forEach(i=>['lmin','lmax'].forEach(id=>$(id+i).addEventListener('change',()=>sendLimits(i,+$('lmin'+i).value,+$('lmax'+i).value))));
+document.querySelectorAll('[data-lm]').forEach(b=>b.onclick=()=>{const i=+b.dataset.lm;if(!writer||!qActual){log('Connect the Teensy first.');return;}
+ const cur=qActual[i];b.dataset.k==='min'?sendLimits(i,cur,LIMITS[i][1]):sendLimits(i,LIMITS[i][0],cur);});
+document.querySelectorAll('[data-lz]').forEach(b=>b.onclick=()=>{const i=+b.dataset.lz;if(!writer){log('Connect the Teensy first.');return;}
+ if(confirm(`Make J${i+1}'s current position its 0°? This is saved and used after every homing.`))write('O '+(i+1));});
+// switch side limited only by the endstop itself
+document.querySelectorAll('[data-le]').forEach(b=>b.onclick=()=>{const i=+b.dataset.le,d=homeDir[i];if(!writer||!d){log('Connect the Teensy first.');return;}
+ if(!confirm(`Let J${i+1} move toward its switch until the switch itself stops it (no software limit on that side)?`))return;
+ d<0?sendLimits(i,-720,LIMITS[i][1]):sendLimits(i,LIMITS[i][0],720);});
+// steps per degree
+let spdNow=[0,0,0,0,0,0];
+function showSpd(){spdNow.forEach((v,i)=>{const e=$('spd'+i);if(e&&document.activeElement!==e)e.value=v.toFixed(3);});}
+[0,1,2,3,4,5].forEach(i=>$('spd'+i).addEventListener('change',e=>{const v=+e.target.value;if(!writer||!(v>0.5))return;
+ if(confirm(`Set J${i+1} to ${v} steps per degree? You'll need to home J${i+1} again.`))write(`G ${i+1} ${v}`);else showSpd();}));
+document.querySelectorAll('[data-fix]').forEach(b=>b.onclick=()=>{const i=+b.dataset.fix;if(!writer||!spdNow[i]){log('Connect the Teensy first.');return;}
+ const sw=parseFloat(prompt(`J${i+1}: how many degrees did the app say it moved?`,'90'));if(!(sw>0))return;
+ const real=parseFloat(prompt(`J${i+1}: how many degrees did it REALLY move (measure the arm)?`,''));if(!(real>0))return;
+ const v=spdNow[i]*sw/real;if(confirm(`New J${i+1} steps per degree: ${v.toFixed(3)} (was ${spdNow[i].toFixed(3)}). Apply? You'll need to home J${i+1} again.`))write(`G ${i+1} ${v.toFixed(3)}`);});
+$('resetCal').onclick=()=>{if(writer&&confirm('Forget saved directions, zeros and limits? You will need to power-cycle the Teensy.'))write('X');};
+function setSwitches(v){v.forEach((x,k)=>{const d=$('sw'+(k+1));if(!d)return;d.classList.toggle('hit',x===1);d.querySelector('small').textContent=x===1?'pressed':'open';});}
+function setHomed(h){homed=h;$('homeState').textContent=h?'· homed':'· not homed';$('homeState').style.color=h?'var(--good)':'var(--bad)';}
+function syncToActual(){if(qActual){q=qActual.slice();lastSent='M '+q.map(v=>v.toFixed(2)).join(' ');if(mode==='cart')cart=poseOf(fkFrames(q)[6]);refresh();}}
+let lastLogged='';
+function handleLine(line){
+ if(line.startsWith('L ')){setSwitches(line.slice(2).split(/\s+/).map(Number));return;}
+ if(line.startsWith('D ')){const v=line.slice(2).split(/\s+/).map(Number);if(v.length===5){homeDir=v;showHomeDir();}return;}
+ if(line.startsWith('INV ')){const v=line.slice(4).split(/\s+/).map(Number);if(v.length===6){inv=v;showInv();}return;}
+ if(line.startsWith('SPD ')){const v=line.slice(4).split(/\s+/).map(Number);if(v.length===6&&v.every(isFinite)){spdNow=v;showSpd();}return;}
+ if(line.startsWith('LIM ')){const v=line.slice(4).split(/\s+/).map(Number);if(v.length===12&&v.every(isFinite)){applyLimits(v);refresh();}return;}
+ if(line.startsWith('N ')){const v=line.slice(2).split(/\s+/).map(Number);if(v.length===6){jEn=v.map(x=>x===1);showEnable();if(jEn.some(Boolean))clearStop();}return;}
+ if(line!==lastLogged||!line.startsWith('OK M'))log('< '+line);lastLogged=line;
+ if(line==='HOMED'||line.startsWith('ERR')||line==='OK homing cancelled'||/^OK J\d homed/.test(line)){homingActive=false;if(/^OK J\d homed/.test(line))setTimeout(syncToActual,50);}
+ if(line==='HOMED'||line==='OK zero set'){setHomed(true);q=[0,0,0,0,0,0];lastSent='M '+q.map(v=>v.toFixed(2)).join(' ');if(mode==='cart')cart=poseOf(fkFrames(q)[6]);refresh();}
+ else if(line==='OK homed'){setHomed(true);setTimeout(syncToActual,50);}
+ else if(line==='OK not homed')setHomed(false);
+ else if(/^OK J\d (reversed|normal|zero set here)$/.test(line)){setTimeout(syncToActual,50);}
+ else if(line.startsWith('ERR limit')){jogStop();$('warn').style.display='block';$('warn').textContent='Endstop hit on '+line.slice(10)+'. Motion stopped; the sliders now follow the real position.';setTimeout(syncToActual,50);}
+ else if(line.startsWith('ERR homing')||line.includes('switch not found'))setHomed(false);
+}
+
+// ===================== HOLD-TO-JOG (like the old GUI) =====================
+let jog=null; // {i,btn}
+function jogStart(i,dir,btn){if(jog||!jEn[i])return;jog={i,btn};btn.classList.add('active');
+ if(!writer){log('Not connected: jog only works on the real arm.');return;}
+ write(`J ${i+1} ${dir}`);}
+function jogStop(){if(!jog)return;const {btn}=jog;jog=null;btn.classList.remove('active');if(writer){write('J 0 0');followUntil=performance.now()+2500;}}
+let followUntil=0;
+addEventListener('blur',jogStop);document.addEventListener('visibilitychange',()=>{if(document.hidden)jogStop();});
+// ===================== G-CODE DRAWING =====================
+// All drawing coordinates are the PEN TIP. Flange = tip − penOffset (base frame, fixed tool angle).
+const GC={origin:null,R:null,off:[0,0,0],q0:null,pts:[],sol:null,running:false,paused:false,abort:false,area:null};
+const gv=id=>parseFloat($(id).value)||0;
+function penOffsetBase(R){const n=[R[0][2],R[1][2]],h=Math.hypot(n[0],n[1]),a=gv('gcAhead'),b=gv('gcBelow');
+ return h>0.2?[n[0]/h*a,n[1]/h*a,-b]:[0,0,-b-a];}             // flange facing down: both add along −Z
+const flangeOf=p=>[p[0]-GC.off[0],p[1]-GC.off[1],p[2]-GC.off[2]];
+const tipNow=()=>{const f=col(fkFrames(q)[6],3);return [f[0]+GC.off[0],f[1]+GC.off[1],f[2]+GC.off[2]];};
+const paperZ=()=>GC.origin[2]-gv('gcDepth'), upZ=()=>paperZ()+gv('gcLift');
+
+// ---------- G-code parser -> drawing-space points {x,y,z,mot,pen,line} ----------
+function parseGcode(text){
+ let abs=true,unit=1,x=0,y=0,z=null,pen=null,mot=null;const out=[];let hasZ=false,hasM=false;
+ text.split(/\r?\n/).forEach((raw,n)=>{
+  const s=raw.replace(/\([^)]*\)/g,'').replace(/;.*/,'').trim().toUpperCase();if(!s)return;
+  const w={},gs=[],ms=[];
+  s.replace(/([A-Z])\s*([-+]?\d*\.?\d+)/g,(_,k,v)=>{v=parseFloat(v);if(k==='G')gs.push(v);else if(k==='M')ms.push(v);else w[k]=v;return '';});
+  gs.forEach(g=>{if(g===90)abs=true;else if(g===91)abs=false;else if(g===20)unit=25.4;else if(g===21)unit=1;});
+  ms.forEach(m=>{if(m===3||m===4||m===5){hasM=true;pen=m!==5;out.push({x,y,z,mot:-1,pen,line:n+1});}});
+  const g=gs.find(v=>v===0||v===1||v===2||v===3);if(g!==undefined)mot=g;
+  if(!('X' in w||'Y' in w||'Z' in w)||mot===null)return;
+  const nx='X' in w?(abs?w.X*unit:x+w.X*unit):x, ny='Y' in w?(abs?w.Y*unit:y+w.Y*unit):y;
+  const nz='Z' in w?(abs?w.Z*unit:(z||0)+w.Z*unit):z;if('Z' in w)hasZ=true;
+  if(mot===2||mot===3){
+   if(!('I' in w||'J' in w))throw new Error(`Line ${n+1}: arcs need I/J (R arcs aren't supported)`);
+   const cx=x+(w.I||0)*unit,cy=y+(w.J||0)*unit,r=Math.hypot(x-cx,y-cy);
+   const a0=Math.atan2(y-cy,x-cx);let sw=Math.atan2(ny-cy,nx-cx)-a0;
+   if(mot===2&&sw>=-1e-9)sw-=2*Math.PI;if(mot===3&&sw<=1e-9)sw+=2*Math.PI;
+   const k=Math.max(2,Math.ceil(Math.abs(sw)*r/1));
+   for(let i=1;i<=k;i++){const a=a0+sw*i/k;out.push({x:cx+r*Math.cos(a),y:cy+r*Math.sin(a),z:nz===null?null:(z===null?nz:z+(nz-z)*i/k),mot,pen,line:n+1});}
+  }else out.push({x:nx,y:ny,z:nz,mot,pen,line:n+1});
+  x=nx;y=ny;z=nz;});
+ return {pts:out,hasZ,hasM};}
+const isDown=(p,hasZ,hasM)=>hasZ&&p.z!==null?p.z<=0:(hasM?!!p.pen:p.mot>0);
+
+// drawing space (mm) -> robot base frame: scale, offset, then rotate about the origin
+function toRobot(x,y){const s=gv('gcScale')/100,r=gv('gcRot')*D2R,dx=s*x+gv('gcOffX'),dy=s*y+gv('gcOffY');
+ return [GC.origin[0]+Math.cos(r)*dx-Math.sin(r)*dy,GC.origin[1]+Math.sin(r)*dx+Math.cos(r)*dy];}
+function toDrawing(X,Y){const r=gv('gcRot')*D2R,ex=X-GC.origin[0],ey=Y-GC.origin[1];return [Math.cos(r)*ex+Math.sin(r)*ey,-Math.sin(r)*ex+Math.cos(r)*ey];} // before scale/offset
+
+function buildPath(){
+ if(!GC.origin)throw new Error('Set the drawing origin first.');
+ const {pts,hasZ,hasM}=parseGcode($('gcText').value);if(!pts.length)throw new Error('No moves found in the G-code.');
+ const pz=paperZ(),uz=upZ();
+ const mach=pts.map(p=>{const [X,Y]=toRobot(p.x,p.y);
+  const zz=isDown(p,hasZ,hasM)?pz:(hasZ&&p.z!==null?pz+Math.max(p.z,gv('gcLift')):uz);return {x:X,y:Y,z:zz,line:p.line};});
+ const t=tipNow();
+ const seq=[{x:t[0],y:t[1],z:Math.max(t[2],uz),line:0},{x:mach[0].x,y:mach[0].y,z:uz,line:mach[0].line},...mach];
+ const L=seq[seq.length-1];seq.push({x:L.x,y:L.y,z:uz,line:L.line});
+ const out=[seq[0]];
+ for(let i=1;i<seq.length;i++){const a=out[out.length-1],b=seq[i],d=Math.hypot(b.x-a.x,b.y-a.y,b.z-a.z);if(d<1e-6)continue;
+  const k=Math.ceil(d/2);for(let j=1;j<=k;j++)out.push({x:a.x+(b.x-a.x)*j/k,y:a.y+(b.y-a.y)*j/k,z:a.z+(b.z-a.z)*j/k,line:b.line,draw:Math.abs(a.z-pz)<0.01&&Math.abs(b.z-pz)<0.01});}
+ return {path:out};}
+function limitNames(qq){return qq.map((v,i)=>Math.abs(v-LIMITS[i][0])<0.6||Math.abs(v-LIMITS[i][1])<0.6?'J'+(i+1):null).filter(Boolean);}
+function solvePath(path){let qc=q.slice();const sol=[];
+ for(const p of path){const r=ik(flangeOf([p.x,p.y,p.z]),GC.R,qc,200,false);const jump=Math.max(...r.q.map((v,i)=>Math.abs(v-qc[i])));
+  if(!r.ok||jump>20){const al=limitNames(r.q);
+   throw new Error(`G-code line ${p.line}: can't reach (${p.x.toFixed(0)}, ${p.y.toFixed(0)}, ${p.z.toFixed(0)}) mm${al.length?' — '+al.join(', ')+' at limit':''}. Press "Find drawing area", then "Fit G-code to area".`);}
+  const fh=floorHit(r.q);if(fh)throw new Error(`G-code line ${p.line}: ${fh}. Lower the table limit only if nothing is under the arm.`);
+  qc=r.q;sol.push(qc);}
+ return sol;}
+function gcStatus(t,bad){$('gcStatus').textContent=t;$('gcStatus').style.color=bad?'var(--bad)':'';}
+function gcProgress(f){$('gcProg').style.width=(100*f).toFixed(1)+'%';}
+
+// ---------- 3D preview ----------
+const pathG=new THREE.Group();scene.add(pathG);
+function drawPreview(path){clear(pathG);
+ const seg=(pts,color,op)=>{if(pts.length<2)return;const g=new THREE.BufferGeometry().setFromPoints(pts.map(p=>V([p.x,p.y,p.z])));pathG.add(new THREE.Line(g,new THREE.LineBasicMaterial({color,transparent:true,opacity:op})));};
+ if(GC.area&&GC.origin){const a=GC.area,z=paperZ();seg([{x:a.x0,y:a.y0,z},{x:a.x1,y:a.y0,z},{x:a.x1,y:a.y1,z},{x:a.x0,y:a.y1,z},{x:a.x0,y:a.y0,z}],0xffd166,0.8);}
+ if(path){let cur=[path[0]],dr=false;
+  for(let i=1;i<path.length;i++){const d=!!path[i].draw;if(d!==dr){seg(cur,dr?0x4ade80:0x7b8594,dr?1:0.5);cur=[path[i-1]];dr=d;}cur.push(path[i]);}
+  seg(cur,dr?0x4ade80:0x7b8594,dr?1:0.5);}
+ render();}
+function preparePath(){try{const {path}=buildPath();drawPreview(path);const sol=solvePath(path);GC.pts=path;GC.sol=sol;
+  const len=path.reduce((a,p,i)=>i?a+Math.hypot(p.x-path[i-1].x,p.y-path[i-1].y,p.z-path[i-1].z):0,0);
+  gcStatus(`Path OK: ${path.length} steps, ${(len/10).toFixed(1)} cm of travel. Green = pen down.`);return true;}
+ catch(e){GC.sol=null;gcStatus(e.message,true);return false;}}
+
+// ---------- runner ----------
+let lastV=null;
+function setSpeed(v){v=Math.max(2,Math.min(90,v));if(lastV===null||Math.abs(v-lastV)/lastV>0.1){lastV=v;write('V '+v.toFixed(1));}}
+function arrive(t,simMs){return new Promise(res=>{const t0=performance.now();
+ (function chk(){if(GC.abort||estopped)return res(false);
+  if(!writer){if(performance.now()-t0>=simMs)return res(true);}
+  else if(qActual&&qActual.every((v,i)=>Math.abs(v-t[i])<0.3))return res(true);
+  if(performance.now()-t0>20000){gcStatus('Timed out waiting for the arm. Stopped.',true);return res(false);}
+  setTimeout(chk,10);})();});}
+async function runSolved(path,sol,label){
+ if(GC.running)return;if(writer&&!homed){gcStatus('Home the arm first.',true);return;}
+ GC.running=true;GC.abort=false;GC.paused=false;$('gcPause').textContent='Pause';lastV=null;
+ for(let i=0;i<sol.length;i++){
+  while(GC.paused&&!GC.abort)await new Promise(r=>setTimeout(r,50));
+  if(GC.abort||estopped)break;
+  const prev=i?sol[i-1]:q,p=path[i],pp=i?path[i-1]:p;
+  const mm=Math.hypot(p.x-pp.x,p.y-pp.y,p.z-pp.z),secs=Math.max(0.02,mm/(p.draw?gv('gcDraw'):gv('gcTravel')));
+  setSpeed(Math.max(...sol[i].map((v,k)=>Math.abs(v-prev[k])))/secs);
+  q=sol[i].slice();lastSent='M '+q.map(v=>v.toFixed(2)).join(' ');write(lastSent);
+  if(i%3===0||i===sol.length-1){refresh();gcProgress((i+1)/sol.length);gcStatus(`${label}: step ${i+1} of ${sol.length}${p.line?' (G-code line '+p.line+')':''}`);}
+  if(!await arrive(sol[i],secs*1000))break;}
+ const done=!GC.abort&&!estopped;GC.running=false;write('V '+$('spd').value);lastV=null;
+ if(mode==='cart')cart=poseOf(fkFrames(q)[6]);refresh();
+ gcStatus(done?`${label}: finished.`:`${label}: stopped.`,!done);if(done)gcProgress(1);}
+
+// ---------- origin, pen test ----------
+$('gcOrigin').onclick=()=>{const T=fkFrames(q)[6];GC.R=T.slice(0,3).map(r=>r.slice(0,3));GC.off=penOffsetBase(GC.R);
+ const f=col(T,3);GC.origin=[f[0]+GC.off[0],f[1]+GC.off[1],f[2]+GC.off[2]];GC.q0=q.slice();GC.sol=null;GC.area=null;drawPreview(null);$('areaInfo').textContent='';
+ gcStatus(`Origin set: pen tip at X ${GC.origin[0].toFixed(1)}, Y ${GC.origin[1].toFixed(1)}, Z ${GC.origin[2].toFixed(1)} mm. Paper is ${gv('gcDepth')} mm below the tip. Tool angle is locked for drawing.`);};
+function penMove(toZ,label){if(!GC.origin){gcStatus('Set the drawing origin first.',true);return;}
+ const t=tipNow(),path=[],k=Math.max(1,Math.ceil(Math.abs(toZ-t[2])/2));
+ for(let j=1;j<=k;j++)path.push({x:t[0],y:t[1],z:t[2]+(toZ-t[2])*j/k,line:0,draw:false});
+ try{runSolved(path,solvePath(path),label);}catch(e){gcStatus(e.message,true);}}
+$('gcTest').onclick=()=>penMove(GC.origin?paperZ():0,'Pen down');
+$('gcUp').onclick=()=>penMove(GC.origin?upZ():0,'Pen up');
+$('gcCheck').onclick=preparePath;
+$('gcRun').onclick=()=>{if(GC.running)return;if(!preparePath())return;
+ if(writer&&!confirm('Start drawing? Keep a hand near STOP (or press Esc).'))return;runSolved(GC.pts,GC.sol,'Drawing');};
+$('gcPause').onclick=()=>{if(!GC.running)return;GC.paused=!GC.paused;$('gcPause').textContent=GC.paused?'Resume':'Pause';};
+$('gcStop').onclick=()=>{if(!GC.running)return;GC.abort=true;if(writer)write('S');};
+$('gcFile').addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;f.text().then(t=>{$('gcText').value=t;GC.sol=null;gcStatus(`Loaded ${f.name}. Press Check path.`);});});
+['gcDepth','gcLift','gcScale','gcRot','gcOffX','gcOffY','gcText'].forEach(id=>$(id).addEventListener('change',()=>{GC.sol=null;if(GC.origin&&$('gcText').value.trim())preparePath();}));
+
+// ---------- reachable drawing area ----------
+// Flood-fill a 5 mm grid on the paper plane outward from the origin. A cell counts if the
+// pen can reach it both on the paper and at pen-up height, continuing smoothly from its
+// neighbour (no wrist flips), within joint limits and above the table.
+function findArea(onProgress){return new Promise((resolve,reject)=>{
+ if(!GC.origin)return reject(new Error('Set the drawing origin first.'));
+ const step=5,ext=Math.round(260/step),pz=paperZ(),uz=upZ(),key=(i,j)=>i+','+j,ok=new Map();
+ const tryCell=(i,j,seed)=>{const X=GC.origin[0]+i*step,Y=GC.origin[1]+j*step;
+  const a=ik(flangeOf([X,Y,pz]),GC.R,seed,60,false);if(!a.ok||Math.max(...a.q.map((v,k)=>Math.abs(v-seed[k])))>15||floorHit(a.q))return null;
+  const b=ik(flangeOf([X,Y,uz]),GC.R,a.q,60,false);if(!b.ok||Math.max(...b.q.map((v,k)=>Math.abs(v-a.q[k])))>15||floorHit(b.q))return null;
+  return a.q;};
+ const q0=tryCell(0,0,GC.q0||q);if(!q0)return reject(new Error('The paper point under the origin is out of reach. Check pen-down depth and the table limit.'));
+ ok.set(key(0,0),q0);const queue=[[0,0]];let n=0;
+ (function chunk(){const t0=performance.now();
+  while(queue.length&&performance.now()-t0<25){const [i,j]=queue.shift(),s=ok.get(key(i,j));
+   for(const [di,dj] of [[1,0],[-1,0],[0,1],[0,-1]]){const a=i+di,b=j+dj;if(Math.abs(a)>ext||Math.abs(b)>ext||ok.has(key(a,b)))continue;
+    const r=tryCell(a,b,s);ok.set(key(a,b),r);if(r)queue.push([a,b]);}n++;}
+  if(onProgress)onProgress(n);
+  if(queue.length)return setTimeout(chunk,0);
+  // largest reachable rectangle (histogram method), preferring the image's aspect ratio
+  const W=2*ext+1,hist=new Array(W).fill(0),ar=GC.aspect||0;let best=null,bestScore=0;
+  for(let jj=-ext;jj<=ext;jj++){for(let c=0;c<W;c++)hist[c]=ok.get(key(c-ext,jj))?hist[c]+1:0;
+   const st=[];for(let c=0;c<=W;c++){const h=c<W?hist[c]:0;let start=c;
+    while(st.length&&st[st.length-1][1]>=h){const [s0,h0]=st.pop();const w=(c-s0-1)*step,hh=(h0-1)*step;
+     if(w>0&&hh>0){const score=ar?Math.min(w,hh*ar)*Math.min(hh,w/ar):w*hh;if(score>bestScore){bestScore=score;best={i0:s0-ext,i1:c-1-ext,j0:jj-h0+1,j1:jj};}}start=s0;}
+    st.push([start,h]);}}
+  if(!best)return reject(new Error('No reachable drawing area found around the origin.'));
+  resolve({x0:GC.origin[0]+best.i0*step,x1:GC.origin[0]+best.i1*step,y0:GC.origin[1]+best.j0*step,y1:GC.origin[1]+best.j1*step});})();});}
+// area in drawing coordinates (before scale/offset), shrunk by the margin
+function areaDrawing(){const a=GC.area,m=gv('imgMargin'),c=[toDrawing(a.x0,a.y0),toDrawing(a.x1,a.y1)];
+ return {x0:Math.min(c[0][0],c[1][0])+m,x1:Math.max(c[0][0],c[1][0])-m,y0:Math.min(c[0][1],c[1][1])+m,y1:Math.max(c[0][1],c[1][1])-m};}
+$('gcArea').onclick=async()=>{try{$('areaInfo').textContent='Searching…';
+ GC.area=await findArea(n=>$('areaInfo').textContent=`Searching… ${n} points checked`);
+ const w=GC.area.x1-GC.area.x0,h=GC.area.y1-GC.area.y0;
+ $('areaInfo').textContent=`Reachable area: ${w.toFixed(0)} × ${h.toFixed(0)} mm (yellow box in 3D).`;drawPreview(null);}
+ catch(e){$('areaInfo').textContent=e.message;}};
+$('gcFit').onclick=()=>{try{if(!GC.area)throw new Error('Press "Find drawing area" first.');
+ const {pts,hasZ,hasM}=parseGcode($('gcText').value);const d=pts.filter(p=>isDown(p,hasZ,hasM));const use=d.length?d:pts;if(!use.length)throw new Error('No G-code to fit.');
+ const bx0=Math.min(...use.map(p=>p.x)),bx1=Math.max(...use.map(p=>p.x)),by0=Math.min(...use.map(p=>p.y)),by1=Math.max(...use.map(p=>p.y));
+ const A=areaDrawing(),k=Math.min((A.x1-A.x0)/Math.max(bx1-bx0,1e-6),(A.y1-A.y0)/Math.max(by1-by0,1e-6));
+ $('gcScale').value=(k*100).toFixed(1);
+ $('gcOffX').value=((A.x0+A.x1)/2-k*(bx0+bx1)/2).toFixed(1);$('gcOffY').value=((A.y0+A.y1)/2-k*(by0+by1)/2).toFixed(1);
+ GC.sol=null;preparePath();}catch(e){gcStatus(e.message,true);}};
+
+// ---------- image -> G-code ----------
+let IMG=null; // {kind:'svg',lines:[[x,y]...]} in image units (y up) | {kind:'raster',gray,w,h}
+function rdp(pts,eps){if(pts.length<3)return pts;let dmax=0,idx=0;const [a,b]=[pts[0],pts[pts.length-1]],L=Math.hypot(b[0]-a[0],b[1]-a[1])||1e-9;
+ for(let i=1;i<pts.length-1;i++){const d=Math.abs((b[1]-a[1])*pts[i][0]-(b[0]-a[0])*pts[i][1]+b[0]*a[1]-b[1]*a[0])/L;if(d>dmax){dmax=d;idx=i;}}
+ return dmax>eps?rdp(pts.slice(0,idx+1),eps).slice(0,-1).concat(rdp(pts.slice(idx),eps)):[a,b];}
+function svgLines(text){const box=document.createElement('div');box.style.cssText='position:absolute;left:-10000px;top:0;width:1000px;height:1000px;visibility:hidden';
+ box.innerHTML=text;document.body.appendChild(box);const svg=box.querySelector('svg');if(!svg){box.remove();throw new Error('Not a valid SVG file.');}
+ const els=[...svg.querySelectorAll('path,rect,circle,ellipse,line,polyline,polygon')];const bb=svg.getBBox();const stepU=Math.max(bb.width,bb.height)/1500||1;
+ const lines=[];
+ for(const el of els){let len=0;try{len=el.getTotalLength();}catch(e){continue;}if(!(len>0))continue;
+  const M=el.getCTM()||svg.createSVGMatrix(),n=Math.min(20000,Math.ceil(len/stepU));let cur=[],prev=null;
+  for(let i=0;i<=n;i++){const p=el.getPointAtLength(len*i/n),x=M.a*p.x+M.c*p.y+M.e,y=M.b*p.x+M.d*p.y+M.f;
+   if(prev&&Math.hypot(x-prev[0],y-prev[1])>stepU*3*Math.hypot(M.a,M.b)){if(cur.length>1)lines.push(cur);cur=[];}
+   cur.push([x,-y]);prev=[x,y];}
+  if(cur.length>1)lines.push(cur);}
+ box.remove();if(!lines.length)throw new Error('No drawable shapes found in the SVG.');return lines;}
+function rasterLoad(file){return new Promise((res,rej)=>{const img=new Image();img.onload=()=>{const D=500,s=Math.min(1,D/Math.max(img.width,img.height)),w=Math.max(2,Math.round(img.width*s)),h=Math.max(2,Math.round(img.height*s));
+  const c=document.createElement('canvas');c.width=w;c.height=h;const g=c.getContext('2d');g.fillStyle='#fff';g.fillRect(0,0,w,h);g.drawImage(img,0,0,w,h);
+  const d=g.getImageData(0,0,w,h).data,gray=new Uint8Array(w*h);for(let i=0;i<w*h;i++)gray[i]=0.299*d[4*i]+0.587*d[4*i+1]+0.114*d[4*i+2];
+  URL.revokeObjectURL(img.src);res({kind:'raster',gray,w,h});};img.onerror=()=>rej(new Error('Could not read that image.'));img.src=URL.createObjectURL(file);});}
+// marching squares outline of the dark regions, in pixel units (y up)
+function outlineLines(R,th){const {gray,w,h}=R,dark=(x,y)=>x>=0&&y>=0&&x<w&&y<h&&gray[y*w+x]<th,segs=[];
+ const E=[[.5,0],[1,.5],[.5,1],[0,.5]],T={1:[[3,2]],2:[[2,1]],3:[[3,1]],4:[[0,1]],5:[[3,0],[2,1]],6:[[0,2]],7:[[3,0]],8:[[0,3]],9:[[0,2]],10:[[0,1],[2,3]],11:[[0,1]],12:[[1,3]],13:[[1,2]],14:[[2,3]]};
+ for(let y=-1;y<h;y++)for(let x=-1;x<w;x++){const c=(dark(x,y)?8:0)|(dark(x+1,y)?4:0)|(dark(x+1,y+1)?2:0)|(dark(x,y+1)?1:0);
+  (T[c]||[]).forEach(([a,b])=>segs.push([[x+.5+E[a][0],y+.5+E[a][1]],[x+.5+E[b][0],y+.5+E[b][1]]]));}
+ const k=p=>p[0].toFixed(1)+','+p[1].toFixed(1),adj=new Map();segs.forEach((s,i)=>[0,1].forEach(e=>{const kk=k(s[e]);if(!adj.has(kk))adj.set(kk,[]);adj.get(kk).push(i);}));
+ const used=new Uint8Array(segs.length),lines=[];
+ for(let i=0;i<segs.length;i++){if(used[i])continue;used[i]=1;const line=[segs[i][0],segs[i][1]];
+  for(const dir of [1,0]){while(true){const end=dir?line[line.length-1]:line[0];const nx=(adj.get(k(end))||[]).find(j=>!used[j]);if(nx===undefined)break;used[nx]=1;
+   const s=segs[nx],p=k(s[0])===k(end)?s[1]:s[0];dir?line.push(p):line.unshift(p);}}
+  if(line.length>2)lines.push(line);}
+ return lines.map(l=>l.map(([x,y])=>[x,h-y]));}
+// horizontal hatching of the dark regions; spacing in pixels
+function hatchLines(R,th,spPx){const {gray,w,h}=R,lines=[];let flip=false;
+ for(let yf=spPx/2;yf<h;yf+=spPx){const y=Math.floor(yf),runs=[];let s=-1;
+  for(let x=0;x<=w;x++){const d=x<w&&gray[y*w+x]<th;if(d&&s<0)s=x;if(!d&&s>=0){if(x-s>=2)runs.push([[s,h-yf],[x-1,h-yf]]);s=-1;}}
+  if(flip)runs.reverse().forEach(r=>r.reverse());runs.forEach(r=>lines.push(r));flip=!flip;}
+ return lines;}
+function orderLines(lines){const out=[],left=lines.slice();let p=[0,0];
+ while(left.length){let bi=0,bd=Infinity,rev=false;left.forEach((l,i)=>{const a=Math.hypot(l[0][0]-p[0],l[0][1]-p[1]),b=Math.hypot(l[l.length-1][0]-p[0],l[l.length-1][1]-p[1]);if(a<bd){bd=a;bi=i;rev=false;}if(b<bd){bd=b;bi=i;rev=true;}});
+  let l=left.splice(bi,1)[0];if(rev)l=l.slice().reverse();out.push(l);p=l[l.length-1];}
+ return out;}
+$('imgFile').addEventListener('change',async e=>{const f=e.target.files[0];if(!f)return;
+ try{if(/svg/i.test(f.type)||/\.svg$/i.test(f.name)){const lines=svgLines(await f.text());IMG={kind:'svg',lines};}else IMG=await rasterLoad(f);
+  const b=imgBounds();GC.aspect=(b.x1-b.x0)/Math.max(b.y1-b.y0,1e-6);$('imgInfo').textContent=`Loaded ${f.name}. Press Generate G-code.`;
+  $('imgRasterOpts').hidden=IMG.kind!=='raster';}
+ catch(err){IMG=null;$('imgInfo').textContent=err.message;}});
+function imgBounds(){if(IMG.kind==='raster')return {x0:0,y0:0,x1:IMG.w,y1:IMG.h};
+ let x0=Infinity,y0=Infinity,x1=-Infinity,y1=-Infinity;IMG.lines.forEach(l=>l.forEach(([x,y])=>{x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y);}));return {x0,y0,x1,y1};}
+$('imgGen').onclick=async()=>{try{
+ if(!IMG)throw new Error('Open an image first.');if(!GC.origin)throw new Error('Set the drawing origin first.');
+ if(!GC.area){$('imgInfo').textContent='Finding the reachable area first…';$('gcArea').click();await new Promise(r=>{const t=setInterval(()=>{if(GC.area||!/Searching|Finding/.test($('areaInfo').textContent)){clearInterval(t);r();}},100);});}
+ if(!GC.area)throw new Error('No reachable area — see the message above.');
+ const A=areaDrawing(),maxW=gv('imgMaxW'),b=imgBounds(),bw=b.x1-b.x0,bh=b.y1-b.y0;
+ let k=Math.min((A.x1-A.x0)/bw,(A.y1-A.y0)/bh);if(maxW>0)k=Math.min(k,maxW/bw);            // mm per image unit
+ if(!(k>0))throw new Error('The reachable area is too small (check the margin).');
+ let lines;
+ if(IMG.kind==='svg')lines=IMG.lines;
+ else{const th=gv('imgTh');lines=$('imgMode').value==='hatch'?hatchLines(IMG,th,Math.max(1,gv('imgSp')/k)):outlineLines(IMG,th);}
+ const ox=(A.x0+A.x1)/2-k*(b.x0+b.x1)/2,oy=(A.y0+A.y1)/2-k*(b.y0+b.y1)/2;
+ let mm=lines.map(l=>rdp(l.map(([x,y])=>[ox+k*x,oy+k*y]),0.15)).filter(l=>l.length>1&&Math.hypot(l[l.length-1][0]-l[0][0],l[l.length-1][1]-l[0][1])+l.length>1.5);
+ if(!mm.length)throw new Error('Nothing to draw — try a different threshold.');
+ mm=orderLines(mm);const L=gv('gcLift'),f=n=>n.toFixed(2);
+ const g=['(generated by TW2KA controller)','G21 G90',`G0 Z${f(L)}`];
+ mm.forEach(l=>{g.push(`G0 X${f(l[0][0])} Y${f(l[0][1])}`,'G1 Z0');for(let i=1;i<l.length;i++)g.push(`G1 X${f(l[i][0])} Y${f(l[i][1])}`);g.push(`G0 Z${f(L)}`);});
+ $('gcText').value=g.join('\n');$('gcScale').value=100;$('gcOffX').value=0;$('gcOffY').value=0;
+ $('imgInfo').textContent=`Generated ${mm.length} strokes, ${(bw*k).toFixed(0)} × ${(bh*k).toFixed(0)} mm. Checking the path…`;
+ if(preparePath())$('imgInfo').textContent+=' OK — press Run.';}
+ catch(e){$('imgInfo').textContent=e.message;}};
+$('imgMode').addEventListener('change',()=>$('imgSpRow').hidden=$('imgMode').value!=='hatch');
+
+addEventListener('keydown',e=>{if(e.key==='Escape'){GC.abort=true;$('estop').click();}});
+
+resize();refresh();
+</script>
+</body>
+</html>
