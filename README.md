@@ -6,6 +6,8 @@ A 3D-printed 6-axis robot arm that homes itself, moves in joint or Cartesian spa
 
 https://github.com/user-attachments/assets/a5f0eb35-01ec-4ff1-84e9-ad130a259d0c
 
+## Final Result of What the Robot drew
+<img width="720" height="1280" alt="WhatsApp Image 2026-09-27 at 4 41 34 PM" src="https://github.com/user-attachments/assets/d0164ba7-8a4f-489b-9efd-769c0aeec7fa" />
 
 
 
