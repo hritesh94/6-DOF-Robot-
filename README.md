@@ -4,7 +4,9 @@ A 3D-printed 6-axis robot arm that homes itself, moves in joint or Cartesian spa
 
 > 📹 
 
-https://github.com/user-attachments/assets/dc7c8c3e-c40a-4a58-8002-89ce80eb9adf
+https://github.com/user-attachments/assets/a5f0eb35-01ec-4ff1-84e9-ad130a259d0c
+
+
 
 
 
