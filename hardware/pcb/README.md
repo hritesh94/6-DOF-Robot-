@@ -11,6 +11,12 @@ My own control board for the TW2KA arm: a **Teensy 4.1** driving **six TMC2209**
 | Per driver | STEP, DIR, EN to the Teensy; UART RX/TX lines routed (J1–J6_RX/TX); MS1, MS2 and SPREAD selectable |
 | Endstops | 5 inputs (SW_1–SW_5) for J1–J5 |
 | Power | Motor supply via terminal block and fuse, 100 µF capacitor per driver, separate logic supply (VIO) |
+<img width="720" height="1280" alt="WhatsApp Image 2026-09-28 at 1 49 23 PM" src="https://github.com/user-attachments/assets/f4d70b1a-bb72-41bc-974b-7ce2a27cd135" />
+<img width="806" height="763" alt="pcb" src="https://github.com/user-attachments/assets/22837841-0a95-4729-a996-dbfb7aa9e764" />
+
+
+https://github.com/user-attachments/assets/b51a67fe-33f5-430a-8fab-c27dd11908fc
+
 
 Pin map and endstop wiring: [docs/02-hardware.md](../../docs/02-hardware.md).
 
