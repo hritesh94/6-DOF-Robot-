@@ -2,6 +2,8 @@
 
 <img width="4032" height="2268" alt="WhatsApp Image 2026-09-28 at 2 36 28 PM" src="https://github.com/user-attachments/assets/cab43f70-fc5e-4872-b338-88c204338ccf" />
 <img width="1407" height="830" alt="image" src="https://github.com/user-attachments/assets/10a0d38c-bcd1-4812-8e54-f4b0331a92b4" />
+
+## Here if you see closely the tx and rx connection to the Teensy board is wrong it should be flipped i will correct and upload it in the next iteration
 <img width="806" height="763" alt="pcb" src="https://github.com/user-attachments/assets/ebadd993-3c13-4632-97f9-7ceabfe39a6a" />
 
 A 3D-printed 6-axis robot arm that homes itself, moves in joint or Cartesian space using inverse kinematics, and **draws** from G-code, SVG files or photos.
