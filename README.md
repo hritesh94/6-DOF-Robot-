@@ -36,9 +36,6 @@ https://github.com/user-attachments/assets/a5f0eb35-01ec-4ff1-84e9-ad130a259d0c
 ## Repository layout
 
 ```
-## Repository layout
-
-```
 6-DOF-Robot-/
 ├── README.md                       ← you are here
 ├── LICENSE
@@ -79,7 +76,6 @@ https://github.com/user-attachments/assets/a5f0eb35-01ec-4ff1-84e9-ad130a259d0c
 │   ├── 08-troubleshooting.md       ← problems I hit and how I fixed them
 │   └── roadmap.md                  ← ROS 2, MoveIt, camera, learning plans
 └── media/                          ← photos and videos
-```
 ```
 
 ## Quick start
