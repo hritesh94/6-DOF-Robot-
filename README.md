@@ -2,7 +2,13 @@
 
 A 3D-printed 6-axis robot arm that homes itself, moves in joint or Cartesian space using inverse kinematics, and **draws** from G-code, SVG files or photos.
 
-> 📹 *[Add a GIF or video link of the arm drawing here]*
+> 📹 
+
+https://github.com/user-attachments/assets/dc7c8c3e-c40a-4a58-8002-89ce80eb9adf
+
+
+
+
 
 | | |
 |---|---|
