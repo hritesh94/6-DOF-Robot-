@@ -1,4 +1,6 @@
-# TW2KA 6-DOF Robot Arm — custom PCB, firmware and browser controller
+# TW2KA 6-DOF Robot Arm — custom PCB, firmware and browser controller 
+# Instagram-https://www.instagram.com/zerobudgetbuilds?stkn=Z2p6NzZ4MDZwZGZy&utm_source=ig_contact_invite
+# Youtube-https://youtube.com/@zerobudgetbuilds-e4w?si=uFIiYkhq8qUiVjJG
 
 <img width="4032" height="2268" alt="WhatsApp Image 2026-09-28 at 2 36 28 PM" src="https://github.com/user-attachments/assets/cab43f70-fc5e-4872-b338-88c204338ccf" />
 <img width="1407" height="830" alt="image" src="https://github.com/user-attachments/assets/10a0d38c-bcd1-4812-8e54-f4b0331a92b4" />
