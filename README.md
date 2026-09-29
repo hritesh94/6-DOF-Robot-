@@ -36,28 +36,50 @@ https://github.com/user-attachments/assets/a5f0eb35-01ec-4ff1-84e9-ad130a259d0c
 ## Repository layout
 
 ```
+## Repository layout
+
+```
 6-DOF-Robot-/
-├── README.md                  ← you are here
+├── README.md                       ← you are here
+├── LICENSE
 ├── app/
-│   └── tw2k_controller.html   ← the whole controller (open in Chrome/Edge)
+│   └── tw2k_controller.html        ← the whole controller (open in Chrome/Edge)
 ├── firmware/
 │   └── tw2k_firmware/
-│       └── tw2k_firmware.ino  ← Teensy 4.1 firmware
+│       └── tw2k_firmware.ino       ← Teensy 4.1 firmware
 ├── hardware/
-│   ├── pcb/                   ← KiCad project, schematic PDF, Gerbers
-│   ├── cad/                   ← my modified parts (pen holder etc.)
-│   └── BOM.md                 ← motors, drives, electronics
+│   ├── BOM.md                      ← motors, drives, electronics
+│   ├── cad/
+│   │   ├── README.md
+│   │   ├── pen_holder.3mf          ← my pen holder (print-ready)
+│   │   ├── pen_holder_preview.png
+│   │   └── Arduino robot arm files + step/   ← original TW2KA design files (credit: TW2KA)
+│   │       ├── README.md
+│   │       ├── Arm1/  Arm2/  Base/  ← printable parts
+│   │       ├── Assembly step.STEP  ← full 3D assembly
+│   │       ├── Hardware.txt        ← original hardware list
+│   │       └── coupler stl file for planetary geared nema motor.3mf
+│   └── pcb/
+│       ├── README.md
+│       ├── tw2ka_pcb.kicad_pro     ← open this in KiCad
+│       ├── tw2ka_pcb.kicad_sch     ← schematic
+│       ├── tw2ka_pcb.kicad_pcb     ← 4-layer board layout
+│       ├── fp-lib-table
+│       ├── 3d/
+│       │   └── tw2ka_pcb.step      ← 3D model of the board
+│       └── fabrication/            ← drill files (+ Gerbers)
 ├── docs/
-│   ├── 01-build-log.md        ← the story: what I tried, what failed, why each feature exists
-│   ├── 02-hardware.md         ← PCB, pin map, drivers, motors
-│   ├── 03-kinematics.md       ← DH parameters, workspace, how the IK works
-│   ├── 04-firmware.md         ← serial protocol, config, EEPROM
-│   ├── 05-controller-app.md   ← code map of the HTML app, how to add features
-│   ├── 06-calibration.md      ← first-time setup, step by step
-│   ├── 07-drawing.md          ← G-code and image drawing
-│   ├── 08-troubleshooting.md  ← problems I hit and how I fixed them
-│   └── roadmap.md             ← ROS 2, MoveIt, camera, learning plans
-└── media/                     ← photos and videos
+│   ├── 01-build-log.md             ← the story: what I tried, what failed, why each feature exists
+│   ├── 02-hardware.md              ← PCB, pin map, drivers, motors
+│   ├── 03-kinematics.md            ← DH parameters, workspace, how the IK works
+│   ├── 04-firmware.md              ← serial protocol, config, EEPROM
+│   ├── 05-controller-app.md        ← code map of the HTML app, how to add features
+│   ├── 06-calibration.md           ← first-time setup, step by step
+│   ├── 07-drawing.md               ← G-code and image drawing
+│   ├── 08-troubleshooting.md       ← problems I hit and how I fixed them
+│   └── roadmap.md                  ← ROS 2, MoveIt, camera, learning plans
+└── media/                          ← photos and videos
+```
 ```
 
 ## Quick start
